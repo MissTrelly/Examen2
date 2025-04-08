@@ -1,0 +1,187 @@
+﻿@page "/productos"
+@rendermode InteractiveServer
+
+<h3>Productos</h3>
+<EditForm Model="_producto" OnValidSubmit="Guardar">
+    <DataAnnotationsValidator />
+    @if (!string.IsNullOrEmpty(_errorMensaje))
+    {
+        <div class="alert alert-danger">@_errorMensaje</div>
+    }
+    <div class="my-3">
+        <label for="txtInventario" class="form-label">Inventario</label>
+        <InputNumber class="form-control" id="txtInventario" @bind-Value="_producto.Inventario" />
+        <ValidationMessage For="@(() => _producto.Inventario)" />
+    </div>
+    <div class="my-3">
+        <label for="txtNombre" class="form-label">Nombre</label>
+        <InputText class="form-control" id="txtNombre" @bind-Value="_producto.Nombre" />
+        <ValidationMessage For="@(() => _producto.Nombre)" />
+    </div>
+    <div class="my-3">
+        <label class="form-label">Departamento</label><br />
+        <InputRadioGroup @bind-Value="_producto.Departamento">
+            <InputRadio Value="@("Frutas")" /> Frutas
+            <InputRadio Value="@("Verduras")" class="ms-3" /> Verduras
+            <InputRadio Value="@("Lacteos")" class="ms-3" /> Lácteos
+        </InputRadioGroup>
+        <ValidationMessage For="@(() => _producto.Departamento)" />
+    </div>
+
+    @if (_modoEdicion)
+    {
+        <button type="button" class="btn btn-primary" @onclick="Actualizar">Actualizar</button>
+        <button type="button" class="btn btn-danger" @onclick="CancelarEdicion">Cancelar</button>
+    }
+    else
+    {
+        <button type="submit" class="btn btn-success">Guardar</button>
+    }
+</EditForm>
+
+@if (_modoExistencias)
+{
+    <br />
+    <button class="btn btn-primary mb-3" @onclick="MostrarListado">Listado</button>
+    <h5>Existencias por Departamento</h5>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Departamento</th>
+                <th>Total de productos</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var grupo in _productos.GroupBy(p => p.Departamento))
+            {
+                <tr>
+                    <td>@grupo.Key</td>
+                    <td>@grupo.Count()</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <br />
+    <button class="btn btn-secondary mb-3" @onclick="MostrarExistencias">Existencias</button>
+
+    <table class="table table-striped mt-4">
+        <thead>
+            <tr>
+                <th>Inventario</th>
+                <th>Nombre</th>
+                <th>Departamento</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (Producto producto in _productos)
+            {
+                <tr>
+                    <td>@producto.Inventario</td>
+                    <td>@producto.Nombre</td>
+                    <td>@producto.Departamento</td>
+                    <td>
+                        <button class="btn btn-sm" @onclick="@(() => Eliminar(producto))" title="Eliminar">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
+                                <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528M8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5" />
+                            </svg>
+                        </button>
+                        <button class="btn btn-sm" @onclick="@(() => Modificar(producto))" title="Modificar">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pen" viewBox="0 0 16 16">
+                                <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001m-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708z" />
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private Producto _producto = new();
+    private List<Producto> _productos = new();
+    private bool _modoEdicion = false;
+    private bool _modoExistencias = false;
+    private string _errorMensaje = string.Empty;
+    private Producto? _productoEnEdicion = null;
+
+
+    private void Guardar()
+    {
+        _errorMensaje = string.Empty;
+
+        if (!_modoEdicion && _productos.Any(p => p.Inventario == _producto.Inventario))
+        {
+            _errorMensaje = "El número de inventario se encuentra registrado. Debe ser único.";
+            return;
+        }
+
+        if (_modoEdicion)
+        {
+            var productoExistente = _productos.FirstOrDefault(p => p.Inventario == _producto.Inventario);
+            if (productoExistente is not null)
+            {
+                productoExistente.Nombre = _producto.Nombre;
+                productoExistente.Departamento = _producto.Departamento;
+            }
+        }
+        else
+        {
+            _productos.Add(new Producto
+                {
+                    Inventario = _producto.Inventario,
+                    Nombre = _producto.Nombre,
+                    Departamento = _producto.Departamento
+                });
+        }
+
+        _producto = new();
+        _modoEdicion = false;
+    }
+
+    private void Eliminar(Producto producto)
+    {
+        _productos.Remove(producto);
+    }
+
+    private void Modificar(Producto producto)
+    {
+        _productoEnEdicion = producto;
+
+        // Clonar valores al objeto de edición (sin tocar el original todavía)
+        _producto = new Producto
+            {
+                Inventario = producto.Inventario,
+                Nombre = producto.Nombre,
+                Departamento = producto.Departamento
+            };
+
+        _modoEdicion = true;
+        _errorMensaje = string.Empty;
+    }
+
+    private void CancelarEdicion()
+    {
+        _producto = new();
+        _modoEdicion = false;
+        _errorMensaje = string.Empty;
+    }
+
+    private void MostrarExistencias()
+    {
+        _modoExistencias = true;
+    }
+
+    private void MostrarListado()
+    {
+        _modoExistencias = false;
+    }
+
+    private void Actualizar(){
+
+    }
+}
